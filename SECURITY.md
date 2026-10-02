@@ -19,13 +19,16 @@ committed here — not in files, workflow logs, artifacts or commit messages.
 
 ## Repository settings
 
-- Only organization members with write access can push; outside contributors' pull requests need
-  approval before any workflow runs.
+- Only repository collaborators (currently the organization admins) can push or open pull requests
+  (`pull_request_creation_policy: collaborators_only`); there are no outside collaborators, deploy
+  keys or webhooks. Issues, wiki, projects and discussions are off.
+- Workflow runs from fork pull requests always need approval, and the default workflow token is
+  read-only (the holidays job alone gets `contents: write`).
 - Only GitHub-owned actions are allowed, and every `uses:` is pinned to a full commit SHA.
 - `main` cannot be deleted or force-pushed (ruleset `protect-main`).
 - Secret scanning and push protection are on.
 
 ## Reporting
 
-Report a security problem privately to the repository administrators in the Pleand-inc
-organization instead of opening a public issue.
+Report a security problem privately through the repository's **Security → Report a vulnerability**
+form (private vulnerability reporting is on). Only the repository administrators see the report.
