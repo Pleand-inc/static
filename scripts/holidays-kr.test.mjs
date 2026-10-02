@@ -30,6 +30,16 @@ const ERR_XML_NOT_REGISTERED = `<?xml version="1.0" encoding="UTF-8"?>
 </cmmMsgHeader>
 </OpenAPI_ServiceResponse>`;
 
+// Success bodies below are verbatim getRestDeInfo responses (_type=json) observed in the
+// first workflow run (2026-10-02): 2026-01 (single object), 2026-02 (array), 2026-04 (empty).
+const REAL_2026_01 =
+  '{"response":{"header":{"resultCode":"00","resultMsg":"NORMAL SERVICE."},"body":{"items":{"item":{"dateKind":"01","dateName":"1월1일","isHoliday":"Y","locdate":20260101,"seq":1}},"numOfRows":100,"pageNo":1,"totalCount":1}}}';
+const REAL_2026_02 =
+  '{"response":{"header":{"resultCode":"00","resultMsg":"NORMAL SERVICE."},"body":{"items":{"item":[{"dateKind":"01","dateName":"설날","isHoliday":"Y","locdate":20260216,"seq":1},{"dateKind":"01","dateName":"설날","isHoliday":"Y","locdate":20260217,"seq":1},{"dateKind":"01","dateName":"설날","isHoliday":"Y","locdate":20260218,"seq":1}]},"numOfRows":100,"pageNo":1,"totalCount":3}}}';
+const REAL_2026_04 =
+  '{"response":{"header":{"resultCode":"00","resultMsg":"NORMAL SERVICE."},"body":{"items":"","numOfRows":100,"pageNo":1,"totalCount":0}}}';
+
+// Synthetic success body for cases the real API did not produce (isHoliday N, pagination).
 function ok(items, totalCount) {
   return JSON.stringify({
     response: {
@@ -42,22 +52,22 @@ function ok(items, totalCount) {
 const GAECHEON = { dateKind: '01', dateName: '개천절', isHoliday: 'Y', locdate: 20261003, seq: 1 };
 const HANGUL = { dateKind: '01', dateName: '한글날', isHoliday: 'Y', locdate: 20261009, seq: 1 };
 
-test('items.item as an array', () => {
-  const items = parseRestDeInfo(200, ok({ item: [GAECHEON, HANGUL] }, 2));
-  assert.equal(items.length, 2);
-  assert.deepEqual(toPublicDays(items), [
-    { date: '2026-10-03', name: '개천절', kind: 'public' },
-    { date: '2026-10-09', name: '한글날', kind: 'public' },
+test('items.item as an array (real 2026-02)', () => {
+  assert.deepEqual(toPublicDays(parseRestDeInfo(200, REAL_2026_02)), [
+    { date: '2026-02-16', name: '설날', kind: 'public' },
+    { date: '2026-02-17', name: '설날', kind: 'public' },
+    { date: '2026-02-18', name: '설날', kind: 'public' },
   ]);
 });
 
-test('items.item as a single object', () => {
-  const items = parseRestDeInfo(200, ok({ item: GAECHEON }, 1));
-  assert.deepEqual(toPublicDays(items), [{ date: '2026-10-03', name: '개천절', kind: 'public' }]);
+test('items.item as a single object (real 2026-01)', () => {
+  assert.deepEqual(toPublicDays(parseRestDeInfo(200, REAL_2026_01)), [
+    { date: '2026-01-01', name: '1월1일', kind: 'public' },
+  ]);
 });
 
-test('items as empty string when the month has no holidays', () => {
-  assert.deepEqual(parseRestDeInfo(200, ok('', 0)), []);
+test('items as empty string when the month has no holidays (real 2026-04)', () => {
+  assert.deepEqual(parseRestDeInfo(200, REAL_2026_04), []);
 });
 
 test('isHoliday N is dropped', () => {
@@ -105,6 +115,8 @@ test('locdate as number or string', () => {
   assert.throws(() => locdateToIso('2026-10-03'));
 });
 
+// The API really returns 2026-05-01 as "노동절" (isHoliday Y), the same date as the
+// 근로자의 날 entry in extra-closures.json — the API entry must win.
 test('merge: API day wins over an extra closure on the same date, sorted, range-limited', () => {
   const publicDays = [
     { date: '2026-10-09', name: '한글날', kind: 'public' },

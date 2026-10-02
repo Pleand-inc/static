@@ -95,20 +95,22 @@ async function main() {
 
   const extra = validateExtraClosures(JSON.parse(await readFile(join(OUT_DIR, 'extra-closures.json'), 'utf8')));
 
-  // Month-by-month is the primary mode: it is the documented use of solMonth
-  // and stays correct regardless of how the API treats an omitted month.
+  // One whole-year request per year (solMonth omitted). Verified on 2026-10-02 to return
+  // exactly the same days as 12 month-by-month requests for 2026 and 2027; numOfRows=100
+  // plus the totalCount check in parseRestDeInfo guards against silent pagination.
+  // HOLIDAYS_DEBUG=1 re-runs that comparison.
   const publicByYear = new Map();
   for (const y of years) {
-    const items = await fetchYearByMonth(y);
+    const items = await request(y);
     const days = toPublicDays(items);
     console.log(`${y}: ${items.length} items from API, ${days.length} with isHoliday=Y`);
     publicByYear.set(y, days);
 
     if (DEBUG) {
-      const whole = toPublicDays(await request(y));
-      const a = days.map((d) => d.date).join(',');
-      const b = whole.map((d) => d.date).join(',');
-      console.log(`debug ${y}: month-by-month=${days.length} whole-year=${whole.length} identical=${a === b}`);
+      const byMonth = toPublicDays(await fetchYearByMonth(y));
+      const a = days.map((d) => `${d.date}:${d.name}`).join(',');
+      const b = byMonth.map((d) => `${d.date}:${d.name}`).join(',');
+      console.log(`debug ${y}: whole-year=${days.length} month-by-month=${byMonth.length} identical=${a === b}`);
     }
   }
 

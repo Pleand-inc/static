@@ -19,8 +19,8 @@ next year — so it changes only when the data changes or the year rolls over.
   "from": "2026-01-01",
   "to": "2027-12-31",
   "days": [
-    { "date": "2026-10-03", "name": "개천절", "kind": "public" },
-    { "date": "2026-08-14", "name": "택배 없는 날", "kind": "logistics" }
+    { "date": "2026-08-14", "name": "택배 없는 날", "kind": "logistics" },
+    { "date": "2026-10-03", "name": "개천절", "kind": "public" }
   ]
 }
 ```
@@ -46,8 +46,9 @@ announced — e.g. 택배 없는 날 for 2027 has not been announced yet and is 
 
 `.github/workflows/holidays-kr.yml` runs daily at 03:00 KST (and on manual dispatch):
 
-1. `node --test`, then `scripts/holidays-kr.mjs` fetches both years month by month. Any API
-   error fails the run before any file is written.
+1. `node --test`, then `scripts/holidays-kr.mjs` fetches each year with one request. Any API
+   error fails the run before any file is written. Manual dispatch with `debug` prints the raw
+   API bodies and cross-checks the whole-year result against month-by-month requests.
 2. Commits only when a data file changed. If nothing changed but the last commit is 25+ days
    old, it commits `meta.json` so GitHub does not disable the schedule (60 days of inactivity).
 3. After a push, purges each changed file from jsDelivr
