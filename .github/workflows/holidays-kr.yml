@@ -1,0 +1,85 @@
+name: holidays-kr
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 03:00 KST
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: Print raw API bodies and compare whole-year vs month-by-month queries
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: holidays-kr
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: Test
+        run: node --test scripts/*.test.mjs
+
+      - name: Generate
+        env:
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          HOLIDAYS_DEBUG: ${{ inputs.debug && '1' || '0' }}
+        run: node scripts/holidays-kr.mjs
+
+      - name: Commit and push
+        id: commit
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          data_changed="$(git status --porcelain -- holidays/kr ':(exclude)holidays/kr/meta.json')"
+          age_days=$(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 86400 ))
+          if [ -n "$data_changed" ]; then
+            git add holidays/kr
+            message="chore(holidays-kr): update holiday data"
+          elif [ "$age_days" -ge 25 ]; then
+            git add holidays/kr/meta.json
+            message="chore(holidays-kr): keepalive (last commit ${age_days} days ago)"
+          else
+            echo "No data change and last commit is ${age_days} day(s) old - nothing to commit."
+            exit 0
+          fi
+          files="$(git diff --cached --name-only)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
+          git commit -m "$message"
+          git push
+          echo "Committed: $message"
+          echo "$files"
+          {
+            echo 'files<<__FILES__'
+            echo "$files"
+            echo '__FILES__'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Purge jsDelivr
+        if: steps.commit.outputs.files != ''
+        env:
+          FILES: ${{ steps.commit.outputs.files }}
+        run: |
+          set -uo pipefail
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            status="$(curl -sS -o "$RUNNER_TEMP/purge.json" -w '%{http_code}' \
+              "https://purge.jsdelivr.net/gh/Pleand-inc/static@main/$f")" || status="curl-failed"
+            echo "purge $f -> HTTP $status"
+            cat "$RUNNER_TEMP/purge.json" 2>/dev/null || true
+            echo
+            [ "$status" = "200" ] || echo "::warning::jsDelivr purge for $f returned $status"
+          done <<< "$FILES"
