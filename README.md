@@ -1,8 +1,13 @@
 # static
 
 Static files served via [jsDelivr](https://www.jsdelivr.com/) for Pleand services.
-Everything here is public. The first dataset is `holidays/kr` — Korean public holidays plus
-parcel-delivery closures, used to compute shipping departure dates.
+Everything here is public. Contents:
+
+- `holidays/kr` — Korean public holidays plus parcel-delivery closures, used to compute shipping
+  departure dates.
+- `fonts` — self-hosted web fonts (copied from `jasonKRR/custom-fonts`, same folder layout).
+
+Secrets and repository settings: [SECURITY.md](SECURITY.md).
 
 ## holidays/kr
 
@@ -54,4 +59,16 @@ announced — e.g. 택배 없는 날 for 2027 has not been announced yet and is 
 3. After a push, purges each changed file from jsDelivr
    (`https://purge.jsdelivr.net/gh/Pleand-inc/static@main/<path>`).
 
-The API key lives only in the repository secret `DATA_GO_KR_SERVICE_KEY`.
+The job needs one API key, kept as a repository secret — see [SECURITY.md](SECURITY.md).
+
+## fonts
+
+Each folder holds a stylesheet and its `woff2` files; the stylesheet references the fonts with
+relative URLs, so it works from any path.
+
+| Family | Stylesheet |
+| --- | --- |
+| GmarketSans | `https://cdn.jsdelivr.net/gh/Pleand-inc/static@main/fonts/GmarketSans/GmarketSans.css` |
+| Happiness Sans | `https://cdn.jsdelivr.net/gh/Pleand-inc/static@main/fonts/Happiness-Sans/Happiness-Sans.css` |
+| NanumGothic | `https://cdn.jsdelivr.net/gh/Pleand-inc/static@main/fonts/NanumGothic/NanumGothic.css` |
+| NanumBarunGothic | `https://cdn.jsdelivr.net/gh/Pleand-inc/static@main/fonts/nanumbarungothic/nanumbarungothic.css` |
